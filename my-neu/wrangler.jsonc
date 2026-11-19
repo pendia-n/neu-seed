@@ -6,9 +6,12 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "my-neu",
 	"main": "worker/index.ts",
+	"d1_databases": [{"binding": "DB", "database_name": "myneu-db", "database_id": "7f1b4e20-0876-4771-a8d8-9d41a8b13d03"}],
+	"r2_buckets": [{"binding": "IMAGES", "bucket_name": "myneu-images"}],
 	"compatibility_date": "2026-11-10",
 	"assets": {
-		"not_found_handling": "single-page-application"
+		"not_found_handling": "single-page-application",
+		"run_worker_first": ["/api/*"]
 	},
 	"observability": {
 		"enabled": true
