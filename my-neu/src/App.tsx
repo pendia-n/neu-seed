@@ -3,15 +3,23 @@ import "./App.css";
 
 type Seed = { id: string; text: string; x: number; y: number; image?: string };
 type Board = { id: string; name: string; seeds: Seed[]; revision?: number };
+type Page = "home" | "auth" | "boards" | "board" | "account" | "not-found";
+function pageForPath(path: string): Page {
+  if (path === "/" || path === "/guest") return path === "/guest" ? "board" : "home";
+  if (path === "/login" || path === "/signup" || path === "/forgot-password") return "auth";
+  if (path === "/boards") return "boards";
+  if (/^\/boards\/[^/]+$/.test(path)) return "board";
+  if (path === "/account") return "account";
+  return "not-found";
+}
 const fresh = (): Board => ({
   id: crypto.randomUUID(),
   name: "My garden",
   seeds: [],
 });
 function App() {
-  const [page, setPage] = useState<
-    "home" | "auth" | "boards" | "board" | "account"
-  >("home");
+  const [path, setPath] = useState(() => window.location.pathname);
+  const [page, setPage] = useState<Page>(() => pageForPath(window.location.pathname));
   const [board, setBoard] = useState<Board>(fresh);
   const [boards, setBoards] = useState<Board[]>([]);
   const [zoom, setZoom] = useState(1);
@@ -26,19 +34,27 @@ function App() {
   const [text, setText] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [signup, setSignup] = useState(false);
+  const [signup, setSignup] = useState(window.location.pathname === "/signup");
   const [message, setMessage] = useState("");
   const [user, setUser] = useState("");
   const [paid, setPaid] = useState(false);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [recovery, setRecovery] = useState("");
-  const [reset, setReset] = useState(false);
+  const [reset, setReset] = useState(window.location.pathname === "/forgot-password");
   const [saveStatus, setSaveStatus] = useState("");
   const surface = useRef<HTMLDivElement>(null);
   const pinch = useRef<{ distance: number; zoom: number } | null>(null);
   const revisions = useRef<Record<string, number>>({});
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
+  const navigate = (path: string, replace = false) => {
+    if (replace) window.history.replaceState(null, "", path);
+    else window.history.pushState(null, "", path);
+    setPath(path);
+    setPage(pageForPath(path));
+    setSignup(path === "/signup");
+    setReset(path === "/forgot-password");
+  };
   const update = (next: Board) => {
     setBoard(next);
     if (user) setBoards((old) => old.map((b) => (b.id === next.id ? next : b)));
@@ -57,20 +73,54 @@ function App() {
       const result = await api("boards/" + b.id);
       revisions.current[b.id] = result.revision;
       setBoard(result);
-      setPage("board");
+      navigate("/boards/" + b.id);
     } catch (error) {
       setMessage((error as Error).message);
     }
   };
   useEffect(() => {
+    const syncLocation = () => {
+      const path = window.location.pathname;
+      setPath(path);
+      setPage(pageForPath(path));
+      setSignup(path === "/signup");
+      setReset(path === "/forgot-password");
+      if (path === "/guest") {
+        setUser("");
+        setBoard(fresh());
+      }
+    };
+    window.addEventListener("popstate", syncLocation);
     api("me")
       .then(async (data) => {
         setUser(data.username);
         setPaid(Boolean(data.paid));
         setBoards(await api("boards"));
+        const path = window.location.pathname;
+        if (path === "/") navigate("/boards", true);
+        else if (path === "/guest") navigate("/boards", true);
+        else if (path === "/login" || path === "/signup") navigate("/boards", true);
       })
-      .catch(() => {});
+      .catch(() => {
+        const path = window.location.pathname;
+        if (path === "/guest") setBoard(fresh());
+        else if (path === "/boards" || path.startsWith("/boards/") || path === "/account") navigate("/login", true);
+        else if (path !== "/" && path !== "/login" && path !== "/signup" && path !== "/forgot-password") navigate("/", true);
+      });
+    return () => window.removeEventListener("popstate", syncLocation);
   }, []);
+  useEffect(() => {
+    if (!user || !path.startsWith("/boards/")) return;
+    const id = path.slice("/boards/".length);
+    if (id !== board.id) {
+      api("boards/" + id)
+        .then((savedBoard) => {
+          revisions.current[id] = savedBoard.revision;
+          setBoard(savedBoard);
+        })
+        .catch(() => navigate("/boards", true));
+    }
+  }, [user, path, board.id]);
   useEffect(() => {
     if (!user || page !== "board" || drag) return;
     const timer = setTimeout(() => {
@@ -157,15 +207,15 @@ function App() {
   return (
     <div className="app">
       <header>
-        <button className="brand" onClick={() => setPage("home")}>
+        <button className="brand" onClick={() => navigate(user ? "/boards" : "/")}>
           <img src="/neu.svg" />
           myneu
         </button>
         <nav>
           {user && (
-            <button onClick={() => setPage("boards")}>My gardens</button>
+            <button onClick={() => navigate("/boards")}>My gardens</button>
           )}
-          <button onClick={() => setPage(user ? "account" : "auth")}>
+          <button onClick={() => navigate(user ? "/account" : "/login")}>
             {user ? "Account" : "Sign in"}
           </button>
         </nav>
@@ -188,7 +238,7 @@ function App() {
               onClick={() => {
                 setUser("");
                 setBoard(fresh());
-                setPage("board");
+                navigate("/guest");
               }}
             >
               Try a temporary garden ↗
@@ -196,8 +246,7 @@ function App() {
             <button
               className="secondary"
               onClick={() => {
-                setSignup(true);
-                setPage("auth");
+                navigate("/signup");
               }}
             >
               Create an account
@@ -240,15 +289,15 @@ function App() {
                   },
                 );
                 if (reset) {
-                  setReset(false);
                   setMessage("Password changed. Please sign in.");
+                  navigate("/login", true);
                   return;
                 }
                 setUser(data.username);
                 const me = await api("me");
                 setPaid(Boolean(me.paid));
                 setBoards(await api("boards"));
-                setPage("boards");
+                navigate("/boards", true);
               } catch (error) {
                 setMessage((error as Error).message);
               }
@@ -288,13 +337,11 @@ function App() {
               {reset ? "Reset password" : signup ? "Create account" : "Sign in"}
             </button>
           </form>
-          <button className="textbutton" onClick={() => setSignup(!signup)}>
-            {signup
-              ? "Already have an account? Sign in"
-              : "New here? Create an account"}
+          <button className="textbutton" onClick={() => navigate(signup ? "/login" : "/signup")}>
+            {signup ? "Already have an account? Sign in" : "New here? Create an account"}
           </button>
           {!signup && (
-            <button className="textbutton" onClick={() => setReset(!reset)}>
+            <button className="textbutton" onClick={() => navigate(reset ? "/login" : "/forgot-password")}>
               {reset ? "Back to sign in" : "Forgot password?"}
             </button>
           )}
@@ -318,7 +365,7 @@ function App() {
                   });
                   setBoards([...boards, b]);
                   setBoard(b);
-                  setPage("board");
+                  navigate("/boards/" + b.id);
                 } catch (error) {
                   setMessage((error as Error).message);
                 }
@@ -586,12 +633,24 @@ function App() {
                 setUser("");
                 setPaid(false);
                 setBoards([]);
-                setPage("home");
+                navigate("/", true);
               }}
             >
               Sign out
             </button>
           </div>
+        </main>
+      )}
+      {page === "not-found" && (
+        <main className="narrow">
+          <span className="eyebrow">THIS PATH HAS NO GARDEN</span>
+          <h1>Let’s find your way back.</h1>
+          <button
+            className="primary"
+            onClick={() => navigate(user ? "/boards" : "/")}
+          >
+            {user ? "My gardens" : "Back to myneu"}
+          </button>
         </main>
       )}
       {adding && (
