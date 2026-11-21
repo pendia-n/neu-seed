@@ -3,12 +3,13 @@ import "./App.css";
 
 type Seed = { id: string; text: string; x: number; y: number; image?: string };
 type Board = { id: string; name: string; seeds: Seed[]; revision?: number };
-type Page = "home" | "auth" | "boards" | "board" | "account" | "not-found";
+type Page = "home" | "auth" | "boards" | "board" | "pricing" | "account" | "not-found";
 function pageForPath(path: string): Page {
   if (path === "/" || path === "/guest") return path === "/guest" ? "board" : "home";
   if (path === "/login" || path === "/signup" || path === "/forgot-password") return "auth";
   if (path === "/boards") return "boards";
   if (/^\/boards\/[^/]+$/.test(path)) return "board";
+  if (path === "/pricing") return "pricing";
   if (path === "/account") return "account";
   return "not-found";
 }
@@ -38,6 +39,13 @@ function App() {
   const [message, setMessage] = useState("");
   const [user, setUser] = useState("");
   const [paid, setPaid] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    try {
+      return localStorage.getItem("myneu-theme") === "dark" ? "dark" : "light";
+    } catch {
+      return "light";
+    }
+  });
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [recovery, setRecovery] = useState("");
@@ -54,6 +62,17 @@ function App() {
     setPage(pageForPath(path));
     setSignup(path === "/signup");
     setReset(path === "/forgot-password");
+  };
+  const startCheckout = async (term: "year" | "two-year") => {
+    try {
+      const result = await api("checkout", {
+        method: "POST",
+        body: JSON.stringify({ term }),
+      });
+      window.location.assign(result.url);
+    } catch (error) {
+      setMessage((error as Error).message);
+    }
   };
   const update = (next: Board) => {
     setBoard(next);
@@ -105,10 +124,18 @@ function App() {
         const path = window.location.pathname;
         if (path === "/guest") setBoard(fresh());
         else if (path === "/boards" || path.startsWith("/boards/") || path === "/account") navigate("/login", true);
-        else if (path !== "/" && path !== "/login" && path !== "/signup" && path !== "/forgot-password") navigate("/", true);
+        else if (path !== "/" && path !== "/login" && path !== "/signup" && path !== "/forgot-password" && path !== "/pricing") navigate("/", true);
       });
     return () => window.removeEventListener("popstate", syncLocation);
   }, []);
+  useEffect(() => {
+    document.documentElement.style.colorScheme = theme;
+    try {
+      localStorage.setItem("myneu-theme", theme);
+    } catch {
+      // Keep the selected theme for this session when storage is unavailable.
+    }
+  }, [theme]);
   useEffect(() => {
     if (!user || !path.startsWith("/boards/")) return;
     const id = path.slice("/boards/".length);
@@ -205,7 +232,7 @@ function App() {
       )),
   );
   return (
-    <div className="app">
+    <div className="app" data-theme={theme}>
       <header>
         <button className="brand" onClick={() => navigate(user ? "/boards" : "/")}>
           <img src="/neu.svg" />
@@ -215,8 +242,18 @@ function App() {
           {user && (
             <button onClick={() => navigate("/boards")}>My gardens</button>
           )}
+          <button onClick={() => navigate("/pricing")}>Plans</button>
           <button onClick={() => navigate(user ? "/account" : "/login")}>
             {user ? "Account" : "Sign in"}
+          </button>
+          <button
+            className="theme-toggle"
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            aria-pressed={theme === "dark"}
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          >
+            <span aria-hidden="true">{theme === "dark" ? "☼" : "◐"}</span>
+            {theme === "dark" ? "Light" : "Dark"}
           </button>
         </nav>
       </header>
@@ -256,11 +293,79 @@ function App() {
             Guest gardens disappear when you leave. Create a free account to
             save yours.
           </small>
+          <p className="plan-link">
+            <button className="textbutton" onClick={() => navigate("/pricing")}>Compare free and paid plans →</button>
+          </p>
           <div className="preview">
             <div className="previewline" />
             <article>A thought worth keeping</article>
             <article>Something it reminds me of</article>
           </div>
+        </main>
+      )}
+      {page === "pricing" && (
+        <main className="pricing-page">
+          <div className="pricing-intro">
+            <span className="eyebrow">ROOM FOR EVERY KIND OF THINKING</span>
+            <h1>Start small. Keep growing.</h1>
+            <p>See what is saved, what is temporary, and what a subscription adds.</p>
+          </div>
+          <div className="plan-grid">
+            <article className="plan-card">
+              <span className="eyebrow">JUST TRYING IT</span>
+              <h2>Guest garden</h2>
+              <div className="plan-price">Free</div>
+              <ul>
+                <li>One temporary board</li>
+                <li>Text seeds only</li>
+                <li>Ideas disappear when you leave</li>
+              </ul>
+              <button className="secondary" onClick={() => {
+                setUser("");
+                setBoard(fresh());
+                navigate("/guest");
+              }}>Try a temporary garden</button>
+            </article>
+            <article className="plan-card">
+              <span className="eyebrow">SAVED TO YOUR ACCOUNT</span>
+              <h2>Free account</h2>
+              <div className="plan-price">$0</div>
+              <ul>
+                <li>Up to 20 boards</li>
+                <li>Text seeds</li>
+                <li>Boards saved to your account</li>
+                <li>No image seeds</li>
+              </ul>
+              <button className="secondary" onClick={() => navigate(user ? "/boards" : "/signup")}>
+                {user ? "Go to my gardens" : "Create a free account"}
+              </button>
+            </article>
+            <article className="plan-card subscriber-card">
+              <span className="eyebrow">MORE ROOM TO GROW</span>
+              <h2>Subscriber</h2>
+              <div className="plan-price">From $88</div>
+              <ul>
+                <li>Unlimited boards</li>
+                <li>Text and image seeds</li>
+                <li>Images up to 5 MB</li>
+                <li>Boards and images saved to your account</li>
+              </ul>
+              {paid ? (
+                <button className="primary" onClick={() => navigate("/account")}>Manage subscription</button>
+              ) : (
+                <div className="price-actions">
+                  <button className="primary" onClick={() => user ? void startCheckout("year") : navigate("/signup")}>
+                    $88 / year
+                  </button>
+                  <button className="primary" onClick={() => user ? void startCheckout("two-year") : navigate("/signup")}>
+                    $100 / 2 years
+                  </button>
+                </div>
+              )}
+            </article>
+          </div>
+          <p className="billing-note">Subscriptions renew automatically every year or every two years, based on your choice. Cancel anytime from your account. No refunds, subject to applicable law.</p>
+          <p className="checkout-message" role="status">{message}</p>
         </main>
       )}
       {page === "auth" && (
@@ -573,9 +678,10 @@ function App() {
             <h2>{paid ? "Subscriber" : "Free garden"}</h2>
             <p>
               {paid
-                ? "Your subscription is active."
-                : "Up to 20 boards with text seeds."}
+                ? "Your subscription is active. You can create unlimited boards and add image seeds."
+                : "Your free account includes up to 20 saved text boards. Subscribers can create unlimited boards and add image seeds."}
             </p>
+            <button className="textbutton" onClick={() => navigate("/pricing")}>Compare plans</button>
             {!paid && (
               <div className="actions">
                 {[
@@ -585,17 +691,7 @@ function App() {
                   <button
                     key={term}
                     className="primary"
-                    onClick={async () => {
-                      try {
-                        const result = await api("checkout", {
-                          method: "POST",
-                          body: JSON.stringify({ term }),
-                        });
-                        window.location.assign(result.url);
-                      } catch (error) {
-                        setMessage((error as Error).message);
-                      }
-                    }}
+                    onClick={() => void startCheckout(term as "year" | "two-year")}
                   >
                     {label}
                   </button>
