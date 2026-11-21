@@ -446,7 +446,7 @@ export default {
       }
       if (path === "/api/boards" && request.method === "GET") {
         const rows = await env.DB.prepare(
-          "SELECT id,name,revision FROM boards WHERE owner_id=? ORDER BY updated_at DESC",
+          "SELECT b.id,b.name,b.revision,(SELECT COUNT(*) FROM seeds WHERE board_id=b.id) AS seed_count FROM boards b WHERE b.owner_id=? ORDER BY b.updated_at DESC",
         )
           .bind(userId)
           .all();

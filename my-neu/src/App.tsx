@@ -3,6 +3,7 @@ import "./App.css";
 
 type Seed = { id: string; text: string; x: number; y: number; image?: string };
 type Board = { id: string; name: string; seeds: Seed[]; revision?: number };
+type BoardSummary = { id: string; name: string; seed_count: number; revision?: number };
 type Page = "home" | "auth" | "boards" | "board" | "pricing" | "account" | "not-found";
 function pageForPath(path: string): Page {
   if (path === "/" || path === "/guest") return path === "/guest" ? "board" : "home";
@@ -22,7 +23,7 @@ function App() {
   const [path, setPath] = useState(() => window.location.pathname);
   const [page, setPage] = useState<Page>(() => pageForPath(window.location.pathname));
   const [board, setBoard] = useState<Board>(fresh);
-  const [boards, setBoards] = useState<Board[]>([]);
+  const [boards, setBoards] = useState<BoardSummary[]>([]);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [drag, setDrag] = useState<{
@@ -76,7 +77,10 @@ function App() {
   };
   const update = (next: Board) => {
     setBoard(next);
-    if (user) setBoards((old) => old.map((b) => (b.id === next.id ? next : b)));
+    if (user)
+      setBoards((old) => old.map((b) =>
+        b.id === next.id ? { ...b, name: next.name, seed_count: next.seeds.length, revision: next.revision } : b,
+      ));
   };
   const api = async (path: string, options?: RequestInit) => {
     const response = await fetch("/api/" + path, {
@@ -87,7 +91,7 @@ function App() {
     if (!response.ok) throw new Error(data.error || "Request failed");
     return data;
   };
-  const openBoard = async (b: Board) => {
+  const openBoard = async (b: Pick<Board, "id">) => {
     try {
       const result = await api("boards/" + b.id);
       revisions.current[b.id] = result.revision;
@@ -207,7 +211,9 @@ function App() {
       };
       setBoard(next);
       if (user)
-        setBoards((old) => old.map((b) => (b.id === next.id ? next : b)));
+        setBoards((old) => old.map((b) =>
+          b.id === next.id ? { ...b, name: next.name, seed_count: next.seeds.length, revision: next.revision } : b,
+        ));
     };
     const end = () => setDrag(null);
     window.addEventListener("pointermove", move);
@@ -468,7 +474,7 @@ function App() {
                     method: "POST",
                     body: JSON.stringify(b),
                   });
-                  setBoards([...boards, b]);
+                  setBoards([...boards, { id: b.id, name: b.name, revision: 0, seed_count: 0 }]);
                   setBoard(b);
                   navigate("/boards/" + b.id);
                 } catch (error) {
@@ -489,7 +495,7 @@ function App() {
               >
                 <span>✳</span>
                 <h2>{b.name}</h2>
-                <p>{b.seeds.length} thoughts</p>
+                <p>{b.seed_count ?? 0} {b.seed_count === 1 ? "thought" : "thoughts"}</p>
               </button>
             ))}
           </div>
