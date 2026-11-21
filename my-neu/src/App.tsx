@@ -370,7 +370,7 @@ function App() {
               )}
             </article>
           </div>
-          <p className="billing-note">Subscriptions renew automatically every year or every two years, based on your choice. Cancel anytime from your account. No refunds, subject to applicable law.</p>
+          <p className="billing-note">Your subscription renews every year or every two years, based on your choice. Cancel anytime from your account; paid features stay available through the end of the period you paid for. Payments are non-refundable, subject to applicable law.</p>
           <p className="checkout-message" role="status">{message}</p>
         </main>
       )}

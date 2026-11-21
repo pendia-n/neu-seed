@@ -153,7 +153,11 @@ export default {
           status: string;
           metadata: { user_id?: string };
           current_period_end?: number;
+          items?: { data?: Array<{ current_period_end?: number }> };
         };
+        const periodEnd =
+          subscription.current_period_end ??
+          subscription.items?.data?.[0]?.current_period_end;
         const owner = subscription.metadata?.user_id;
         if (owner)
           await env.DB.prepare(
@@ -164,7 +168,7 @@ export default {
               subscription.customer,
               subscription.id,
               subscription.status,
-              subscription.current_period_end || null,
+              periodEnd || null,
             )
             .run();
       }
@@ -326,13 +330,19 @@ export default {
         return reply({ error: "Session expired." }, 401);
       const userId = session.sub as string;
       const subscription = await env.DB.prepare(
-        "SELECT status FROM subscriptions WHERE user_id=?",
+        "SELECT status,period_end FROM subscriptions WHERE user_id=?",
       )
         .bind(userId)
-        .first<{ status: string }>();
-      const paid =
-        subscription?.status === "active" ||
-        subscription?.status === "trialing";
+        .first<{ status: string; period_end: number | null }>();
+      const paidThrough = Boolean(
+        subscription?.period_end && subscription.period_end * 1000 > Date.now(),
+      );
+      const paid = Boolean(
+        subscription &&
+          ((["active", "trialing"].includes(subscription.status) &&
+            (!subscription.period_end || paidThrough)) ||
+            (subscription.status === "canceled" && paidThrough)),
+      );
       if (path === "/api/me") {
         const user = await env.DB.prepare(
           "SELECT username FROM users WHERE id=?",
