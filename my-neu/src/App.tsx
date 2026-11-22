@@ -233,16 +233,21 @@ function App() {
   const lines = board.seeds.flatMap((a, i) =>
     board.seeds
       .slice(i + 1)
-      .filter((b) => Math.hypot(a.x - b.x, a.y - b.y) < 220)
-      .map((b) => (
-        <line
-          key={a.id + b.id}
-          x1={a.x + 80}
-          y1={a.y + 45}
-          x2={b.x + 80}
-          y2={b.y + 45}
-        />
-      )),
+      .flatMap((b) => {
+        const distance = Math.hypot(a.x - b.x, a.y - b.y);
+        if (distance >= 400) return [];
+        const band = distance < 220 ? "near" : distance < 310 ? "mid" : "far";
+        return (
+          <line
+            key={a.id + ":" + b.id}
+            className={"connection-" + band}
+            x1={a.x + 80}
+            y1={a.y + 45}
+            x2={b.x + 80}
+            y2={b.y + 45}
+          />
+        );
+      }),
   );
   return (
     <div className="app" data-theme={theme}>
