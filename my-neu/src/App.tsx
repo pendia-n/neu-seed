@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
+import { SeedText } from "./SeedText";
 import { Soundtrack } from "./Soundtrack";
 import { CommunityBanner } from "./CommunityBanner";
 
@@ -623,10 +624,10 @@ function App() {
                         <img
                           className="seedimage"
                           src={"/api/images/" + encodeURIComponent(s.image)}
-                          alt={s.text || "Image thought"}
+                          alt="Seed image"
                         />
                       )}
-                      <p>{s.text}</p>
+                      {s.text && <SeedText text={s.text} />}
                       <button
                         className="editseed"
                         onPointerDown={(e) => e.stopPropagation()}

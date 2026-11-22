@@ -568,7 +568,8 @@ export default {
               (seed) =>
                 !Number.isFinite(seed.x) ||
                 !Number.isFinite(seed.y) ||
-                typeof seed.id !== "string",
+                typeof seed.id !== "string" ||
+                (seed.image != null && typeof seed.image !== "string"),
             )
           )
             return reply({ error: "Invalid board" }, 400);

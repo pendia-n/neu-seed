@@ -634,3 +634,32 @@ textarea:focus-visible {
   background: #22382c;
   border-color: #526d57;
 }
+
+.seed-text-preview {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  white-space: pre-wrap;
+}
+.seed .seed-reader {
+  position: fixed;
+  margin: auto;
+  max-height: 85dvh;
+  overflow: auto;
+  border: 1px solid #d5e1d2;
+  color: #274837;
+  cursor: auto;
+  touch-action: auto;
+}
+.seed-reader::backdrop { background: #132b20aa; }
+.seed .seed-reader p {
+  margin: 14px 0 20px;
+  white-space: pre-wrap;
+  user-select: text;
+}
+.seed .seed-reader button.primary {
+  position: static;
+  background: #315c47;
+  color: #fff;
+}
