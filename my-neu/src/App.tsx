@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
+import { CommunityBanner } from "./CommunityBanner";
 
 type Seed = { id: string; text: string; x: number; y: number; image?: string };
 type Board = { id: string; name: string; seeds: Seed[]; revision?: number };
@@ -38,6 +39,7 @@ function App() {
   const [password, setPassword] = useState("");
   const [signup, setSignup] = useState(window.location.pathname === "/signup");
   const [message, setMessage] = useState("");
+  const [authReady, setAuthReady] = useState(false);
   const [user, setUser] = useState("");
   const [paid, setPaid] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
@@ -129,7 +131,8 @@ function App() {
         if (path === "/guest") setBoard(fresh());
         else if (path === "/boards" || path.startsWith("/boards/") || path === "/account") navigate("/login", true);
         else if (path !== "/" && path !== "/login" && path !== "/signup" && path !== "/forgot-password" && path !== "/pricing") navigate("/", true);
-      });
+      })
+      .finally(() => setAuthReady(true));
     return () => window.removeEventListener("popstate", syncLocation);
   }, []);
   useEffect(() => {
@@ -263,6 +266,9 @@ function App() {
           </button>
         </nav>
       </header>
+      {authReady && ((path === "/" && !user) || (path === "/boards" && user)) && (
+        <CommunityBanner key={path + ":" + user} username={user} />
+      )}
       {page === "home" && (
         <main className="landing">
           <div className="eyebrow">A little space for your ideas</div>

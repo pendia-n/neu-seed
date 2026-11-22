@@ -89,6 +89,17 @@ export default {
     const path = url.pathname;
     if (!path.startsWith("/api/"))
       return new Response("Not found", { status: 404 });
+    if (path === "/api/community-stats" && request.method === "GET") {
+      if (!env.DB) return reply({ error: "Community stats unavailable" }, 503);
+      try {
+        const counts = await env.DB.prepare(
+          "SELECT (SELECT COUNT(*) FROM users) AS users, (SELECT COUNT(*) FROM boards) AS boards",
+        ).first<{ users: number; boards: number }>();
+        return reply(counts, 200, { "Cache-Control": "public, max-age=60" });
+      } catch {
+        return reply({ error: "Community stats unavailable" }, 503);
+      }
+    }
     if (!env.DB || !env.JWT_SECRET)
       return reply({ error: "Account service unavailable" }, 503);
     if (path === "/api/stripe/webhook" && request.method === "POST") {
