@@ -673,3 +673,24 @@ textarea:focus-visible {
   stroke-linecap: round;
   opacity: 0.7;
 }
+
+.board-region {
+  --region-color: #669465;
+  fill: var(--region-color);
+  fill-opacity: 0.14;
+  stroke: var(--region-color);
+  stroke-opacity: 0.45;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.board-region[data-color="blue"] { --region-color: #578fc9; }
+.board-region[data-color="violet"] { --region-color: #a17bd1; }
+.board-region[data-color="rose"] { --region-color: #c87591; }
+.board-region[data-color="amber"] { --region-color: #c9974b; }
+.board-region[data-color="teal"] { --region-color: #4f9c98; }
+.zoom .regions-toggle {
+  font-size: 12px;
+  border-bottom: 1px solid currentColor;
+}
+.zoom .regions-toggle[aria-pressed="true"] { background: #dcebd8; }
+.app[data-theme="dark"] .zoom .regions-toggle[aria-pressed="true"] { background: #355644; }

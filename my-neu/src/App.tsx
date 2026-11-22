@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
+import { boardRegions } from "./boardRegions";
 import { SeedText } from "./SeedText";
 import { Soundtrack } from "./Soundtrack";
 import { CommunityBanner } from "./CommunityBanner";
@@ -27,6 +28,7 @@ function App() {
   const [page, setPage] = useState<Page>(() => pageForPath(window.location.pathname));
   const [board, setBoard] = useState<Board>(fresh);
   const [boards, setBoards] = useState<BoardSummary[]>([]);
+  const [showRegions, setShowRegions] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [drag, setDrag] = useState<{
@@ -230,6 +232,7 @@ function App() {
       window.removeEventListener("pointerup", end);
     };
   }, [drag, board, zoom, user]);
+  const regions = page === "board" && showRegions ? boardRegions(board.seeds) : [];
   const lines = board.seeds.flatMap((a, i) =>
     board.seeds
       .slice(i + 1)
@@ -597,7 +600,12 @@ function App() {
                 transform: `translate(${pan.x}px,${pan.y}px) scale(${zoom})`,
               }}
             >
-              <svg className="connections">{lines}</svg>
+              <svg className="connections" aria-hidden="true">
+                {regions.map((region) => (
+                  <polygon key={region.id} className="board-region" data-color={region.color} points={region.points} />
+                ))}
+                {lines}
+              </svg>
               {board.seeds.map((s) => (
                 <div
                   key={s.id}
@@ -675,6 +683,14 @@ function App() {
               </div>
             )}
             <div className="zoom">
+              <button
+                type="button"
+                className="regions-toggle"
+                aria-pressed={showRegions}
+                onClick={() => setShowRegions((show) => !show)}
+              >
+                Regions
+              </button>
               <button onClick={() => setZoom(Math.min(2, zoom + 0.2))}>
                 +
               </button>
