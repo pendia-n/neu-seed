@@ -1,4 +1,4 @@
-const CACHE = "myneu-shell-v1";
+const CACHE = "myneu-shell-v2";
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
@@ -32,7 +32,7 @@ self.addEventListener("fetch", (event) => {
   )
     return;
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, event.request.mode === "navigate" ? { cache: "reload" } : undefined)
       .then((response) => {
         if (response.ok) {
           const copy = response.clone();
