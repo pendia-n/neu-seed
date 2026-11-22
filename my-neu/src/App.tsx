@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
+import { Soundtrack } from "./Soundtrack";
 import { CommunityBanner } from "./CommunityBanner";
 
 type Seed = { id: string; text: string; x: number; y: number; image?: string };
@@ -111,7 +112,6 @@ function App() {
       setSignup(path === "/signup");
       setReset(path === "/forgot-password");
       if (path === "/guest") {
-        setUser("");
         setBoard(fresh());
       }
     };
@@ -120,11 +120,11 @@ function App() {
       .then(async (data) => {
         setUser(data.username);
         setPaid(Boolean(data.paid));
-        setBoards(await api("boards"));
         const path = window.location.pathname;
         if (path === "/") navigate("/boards", true);
         else if (path === "/guest") navigate("/boards", true);
         else if (path === "/login" || path === "/signup") navigate("/boards", true);
+        setBoards(await api("boards").catch(() => []));
       })
       .catch(() => {
         const path = window.location.pathname;
@@ -135,6 +135,9 @@ function App() {
       .finally(() => setAuthReady(true));
     return () => window.removeEventListener("popstate", syncLocation);
   }, []);
+  useEffect(() => {
+    if (user && path === "/guest") navigate("/boards", true);
+  }, [user, path]);
   useEffect(() => {
     document.documentElement.style.colorScheme = theme;
     try {
@@ -266,6 +269,9 @@ function App() {
           </button>
         </nav>
       </header>
+      {authReady && (user ? page === "boards" || (page === "board" && path !== "/guest") : path === "/guest") && (
+        <Soundtrack />
+      )}
       {authReady && ((path === "/" && !user) || (path === "/boards" && user)) && (
         <CommunityBanner key={path + ":" + user} username={user} />
       )}
@@ -507,7 +513,7 @@ function App() {
           </div>
         </main>
       )}
-      {page === "board" && (
+      {page === "board" && (path !== "/guest" || (authReady && !user)) && (
         <main className="boardpage">
           <div className="boardbar">
             <div>

@@ -603,3 +603,34 @@ textarea:focus-visible {
   border-color: #526d57;
   box-shadow: 0 8px 24px #0005;
 }
+
+.soundtrack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 16px;
+  padding: 6px 12px;
+  color: #274837;
+  background: #f8f9f1;
+  border-bottom: 1px solid #dce3d7;
+  font-size: 13px;
+}
+.soundtrack label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.soundtrack input { width: 76px; accent-color: #63866c; }
+.soundtrack select {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+}
+.app[data-theme="dark"] .soundtrack {
+  color: #e5efe7;
+  background: #22382c;
+  border-color: #526d57;
+}

@@ -83,12 +83,48 @@ async function hashPassword(password: string, salt: string) {
 }
 const reply = (data: unknown, status = 200, headers: HeadersInit = {}) =>
   Response.json(data, { status, headers });
+async function serveSoundtrack(request: Request, bucket: R2Bucket) {
+  const key = "soundtrack/neu_of_jothable.mp3";
+  const file = await bucket.head(key);
+  if (!file) return new Response(null, { status: 404 });
+
+  const headers = new Headers({
+    "Content-Type": "audio/mpeg",
+    "Accept-Ranges": "bytes",
+    "Content-Length": String(file.size),
+    "Cache-Control": "public, max-age=86400",
+    ETag: file.httpEtag,
+  });
+  if (request.method === "HEAD") return new Response(null, { headers });
+
+  const rangeHeader = request.headers.get("Range");
+  if (!rangeHeader) {
+    const audio = await bucket.get(key);
+    return audio ? new Response(audio.body, { headers }) : new Response(null, { status: 404 });
+  }
+
+  const range = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader);
+  const start = range?.[1] ? Number(range[1]) : Math.max(0, file.size - Number(range?.[2]));
+  const end = range?.[1] && range[2] ? Math.min(Number(range[2]), file.size - 1) : file.size - 1;
+  if (!range || (!range[1] && !range[2]) || !Number.isSafeInteger(start) || start > end) {
+    return new Response(null, { status: 416, headers: { "Content-Range": `bytes */${file.size}` } });
+  }
+  const length = end - start + 1;
+  const audio = await bucket.get(key, { range: { offset: start, length } });
+  if (!audio) return new Response(null, { status: 404 });
+  headers.set("Content-Length", String(length));
+  headers.set("Content-Range", `bytes ${start}-${end}/${file.size}`);
+  return new Response(audio.body, { status: 206, headers });
+}
+
 export default {
   async fetch(request: Request, env: AppEnv) {
     const url = new URL(request.url);
     const path = url.pathname;
     if (!path.startsWith("/api/"))
       return new Response("Not found", { status: 404 });
+    if (path === "/api/soundtrack" && (request.method === "GET" || request.method === "HEAD"))
+      return serveSoundtrack(request, env.IMAGES);
     if (path === "/api/community-stats" && request.method === "GET") {
       if (!env.DB) return reply({ error: "Community stats unavailable" }, 503);
       try {
