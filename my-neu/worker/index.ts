@@ -129,8 +129,8 @@ export default {
       if (!env.DB) return reply({ error: "Community stats unavailable" }, 503);
       try {
         const counts = await env.DB.prepare(
-          "SELECT (SELECT COUNT(*) FROM users) AS users, (SELECT COUNT(*) FROM boards) AS boards",
-        ).first<{ users: number; boards: number }>();
+          "SELECT (SELECT COUNT(*) FROM users) AS users, (SELECT COUNT(*) FROM boards) AS boards, (SELECT COUNT(*) FROM seeds) AS seeds",
+        ).first<{ users: number; boards: number; seeds: number }>();
         return reply(counts, 200, { "Cache-Control": "public, max-age=60" });
       } catch {
         return reply({ error: "Community stats unavailable" }, 503);

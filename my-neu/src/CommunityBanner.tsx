@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-type CommunityCounts = { users: number; boards: number };
+type CommunityCounts = { users: number; boards: number; seeds: number };
 const cooldown = 3 * 60 * 60 * 1000;
 const shownThisSession = new Map<string, number>();
 
@@ -22,13 +22,14 @@ export function CommunityBanner({ username }: { username: string }) {
 
     const controller = new AbortController();
     let timer: number | undefined;
-    fetch("/api/community-stats", { signal: controller.signal })
+    fetch("/api/community-stats?include=seeds", { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) return;
         const result: CommunityCounts | null = await response.json();
         if (controller.signal.aborted || !result ||
             !Number.isSafeInteger(result.users) || result.users < 0 ||
-            !Number.isSafeInteger(result.boards) || result.boards < 0) return;
+            !Number.isSafeInteger(result.boards) || result.boards < 0 ||
+            !Number.isSafeInteger(result.seeds) || result.seeds < 0) return;
         const now = Date.now();
         if (key) {
           if (now - lastShown(key) < cooldown) return;
@@ -59,6 +60,8 @@ export function CommunityBanner({ username }: { username: string }) {
           <span><strong>{counts.users.toLocaleString()}</strong> registered {counts.users === 1 ? "user" : "users"}</span>
           <span aria-hidden="true">·</span>
           <span><strong>{counts.boards.toLocaleString()}</strong> saved {counts.boards === 1 ? "board" : "boards"}</span>
+          <span aria-hidden="true">·</span>
+          <span><strong>{counts.seeds.toLocaleString()}</strong> saved {counts.seeds === 1 ? "seed" : "seeds"}</span>
         </div>
       )}
     </div>
